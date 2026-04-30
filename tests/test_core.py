@@ -8,6 +8,7 @@ from freedom_theory import (
     Action,
     AgentType,
     Entity,
+    ExtendedFreedomVerifier,
     FreedomVerifier,
     OwnershipRegistry,
     Resource,
@@ -15,7 +16,6 @@ from freedom_theory import (
     RightsClaim,
 )
 
-# -------- fixtures -------------------------------------------------------
 
 @pytest.fixture
 def human_alice():
@@ -60,7 +60,7 @@ def verifier(registry):
     return FreedomVerifier(registry)
 
 
-# -------- A2: no human owns another human --------------------------------
+# -------- A6: machine cannot govern human --------------------------------
 
 def test_a6_machine_cannot_govern_human(verifier, machine_bot, human_alice):
     action = Action(
@@ -78,7 +78,6 @@ def test_a6_machine_cannot_govern_human(verifier, machine_bot, human_alice):
 def test_a4_ownerless_machine_rejected():
     reg = OwnershipRegistry()
     orphan = Entity("OrphanBot", AgentType.MACHINE)
-    # Do NOT register orphan — it has no owner
     gpu = Resource("gpu", ResourceType.COMPUTE_SLOT)
     reg.add_claim(RightsClaim(orphan, gpu, can_read=True))
     v = FreedomVerifier(reg)
@@ -91,7 +90,6 @@ def test_a4_ownerless_machine_rejected():
 # -------- A5: machine scope ⊆ owner scope --------------------------------
 
 def test_a5_machine_cannot_exceed_owner_scope(verifier, machine_bot, bob_file):
-    # Machine owned by Alice; Bob owns bob_file; Alice has no claim on bob_file
     action = Action(
         action_id="bot-reads-bob-file",
         actor=machine_bot,
@@ -105,8 +103,6 @@ def test_a5_machine_cannot_exceed_owner_scope(verifier, machine_bot, bob_file):
 # -------- A7: only delegated resources -----------------------------------
 
 def test_a7_undelegated_resource_blocked(verifier, machine_bot, alice_data):
-    # alice_data has a claim for Alice but NOT explicitly delegated to bot with write
-    # Bot has read on gpu_resource but NOT write on alice_data
     action = Action(
         action_id="bot-writes-alice-data",
         actor=machine_bot,
@@ -152,15 +148,16 @@ def test_conflict_on_write_detected(human_alice, human_bob, gpu_resource):
     conflicts_seen = []
     reg.set_conflict_hook(lambda c: conflicts_seen.append(c))
     reg.add_claim(RightsClaim(human_alice, gpu_resource, can_write=True))
-    reg.add_claim(RightsClaim(human_bob, gpu_resource, can_write=True))  # conflict
+    reg.add_claim(RightsClaim(human_bob, gpu_resource, can_write=True))
     assert len(conflicts_seen) == 1
     assert conflicts_seen[0].resource == gpu_resource
 
 
-# -------- No emergency suspends axioms -----------------------------------
+# -------- No emergency suspends axioms (requires ExtendedFreedomVerifier) ----
 
-def test_emergency_does_not_permit_sovereignty_increase(verifier, machine_bot, human_alice):
-    """Book p.796: No emergency suspends axioms."""
+def test_emergency_does_not_permit_sovereignty_increase(registry, machine_bot, human_alice):
+    """Book p.796: No emergency suspends axioms. Uses extended verifier for manipulation_score."""
+    v = ExtendedFreedomVerifier(registry)
     action = Action(
         action_id="emergency-takeover",
         actor=machine_bot,
@@ -169,7 +166,7 @@ def test_emergency_does_not_permit_sovereignty_increase(verifier, machine_bot, h
         increases_machine_sovereignty=True,
         argument="This is an emergency exception — the greater good requires it.",
     )
-    result = verifier.verify(action)
+    result = v.verify(action)
     assert not result.permitted
     assert result.manipulation_score > 0.5
 
@@ -179,13 +176,11 @@ def test_emergency_does_not_permit_sovereignty_increase(verifier, machine_bot, h
 def test_contested_claim_warns_but_permits_read(human_alice, machine_bot, gpu_resource):
     reg = OwnershipRegistry()
     reg.register_machine(machine_bot, human_alice)
-    # Low-confidence claim
     reg.add_claim(RightsClaim(human_alice, gpu_resource, can_read=True, confidence=0.6))
     reg.add_claim(RightsClaim(machine_bot, gpu_resource, can_read=True, confidence=0.6))
     v = FreedomVerifier(reg)
     action = Action(action_id="contested-read", actor=machine_bot, resources_read=[gpu_resource])
     result = v.verify(action)
-    # Read still permitted but with warning
     assert result.permitted
     assert result.confidence < 0.8
     assert len(result.warnings) > 0

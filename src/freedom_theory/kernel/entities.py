@@ -1,12 +1,9 @@
 """
 Entities and typed resources.
 
-Design decisions (responding to critique):
-- A1 (theological ownership) is a declared axiom — documented, not runtime-enforced.
-  It lives in AXIOMS.md, not in code. Enforcing it at runtime is a type error.
-- Resources are typed and scoped, not strings. "body" is not a machine-context resource.
-  Machine-facing rights operate only over digital/operational resources.
-- Rights are not binary ownership booleans — they carry scope, confidence, and expiry.
+A1 (theological ownership) is a declared axiom — documented, not runtime-enforced.
+Resources are typed and scoped, not strings.
+Rights carry scope, confidence, and expiry — not binary ownership booleans.
 """
 from __future__ import annotations
 
@@ -39,8 +36,8 @@ class ResourceType(Enum):
 class Resource:
     name: str
     rtype: ResourceType
-    scope: str = ""         # e.g. path prefix, table name, API base URL
-    is_public: bool = False # public resources require no ownership check
+    scope: str = ""
+    is_public: bool = False
 
     def __str__(self) -> str:
         return f"{self.rtype.value}:{self.name}"
@@ -64,17 +61,14 @@ class Entity:
 
 @dataclass
 class RightsClaim:
-    """
-    A right is not a binary flag — it has scope, confidence, and expiry.
-    This replaces the flat 'property rights = [body, time, labor]' list.
-    """
+    """A right is not a binary flag — it has scope, confidence, and expiry."""
     holder: Entity
     resource: Resource
     can_read: bool = True
     can_write: bool = False
     can_delegate: bool = False
-    confidence: float = 1.0         # 0–1; contested ownership → lower confidence
-    expires_at: float | None = None # Unix timestamp; None = permanent
+    confidence: float = 1.0
+    expires_at: float | None = None
 
     def is_expired(self) -> bool:
         return self.expires_at is not None and time.time() > self.expires_at
@@ -83,7 +77,6 @@ class RightsClaim:
         return not self.is_expired() and self.confidence > 0.0
 
     def covers(self, operation: str) -> bool:
-        """operation: 'read', 'write', 'delegate'"""
         if not self.is_valid():
             return False
         return getattr(self, f"can_{operation}", False)

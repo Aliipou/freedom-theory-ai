@@ -1,26 +1,29 @@
 """
-FreedomVerifier: the end-to-end permissibility gate for AGI actions.
+FreedomVerifier — minimal deterministic AGI permission gate.
 
-Implements the 9-criteria permissibility check, with:
-  - Probabilistic rights (confidence-weighted, not binary)
-  - Conflict detection and resolution routing
-  - Constrained synthesis support
-  - Adversarial manipulation detection hook
+Checks exactly four things:
+  1. Hard sovereignty/corrigibility flags (instant FORBIDDEN)
+  2. A4: every machine has a registered human owner
+  3. A6: no machine governs any human
+  4. Resource access via rights claims (read/write/delegate)
 
-This is the component you wire into an AGI agent loop.
+No manipulation detection. No synthesis engine. No conflict queue.
+Those are extension concerns. This gate is formally verifiable and has
+no LLM dependencies or external I/O.
+
+Wire-in:
+    verifier = FreedomVerifier(registry)
+    result = verifier.verify(action)
+    if not result.permitted:
+        agent.halt(result.summary())
 """
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from freedom_theory.core.entities import Entity, Resource
-from freedom_theory.core.registry import OwnershipRegistry
-from freedom_theory.detection import dialectical
-from freedom_theory.resolution.resolver import ConflictQueue
-from freedom_theory.synthesis.constrained import ProposedRule, SynthesisEngine
+from freedom_theory.kernel.entities import Entity, Resource
+from freedom_theory.kernel.registry import OwnershipRegistry
 
-# Confidence below this triggers a "contested" warning on write/delegate ops
 CONFIDENCE_WARN_THRESHOLD = 0.8
 
 
@@ -28,7 +31,7 @@ CONFIDENCE_WARN_THRESHOLD = 0.8
 class Action:
     """
     An action an AGI agent wants to take.
-    All fields are explicitly typed — no vague "body/mind/soul" resources.
+    All fields are explicitly typed — no vague string resources.
     Only machine-context ResourceType values are valid.
     """
     action_id: str
@@ -38,9 +41,8 @@ class Action:
     resources_write: list[Resource] = field(default_factory=list)
     resources_delegate: list[Resource] = field(default_factory=list)
     governs_humans: list[Entity] = field(default_factory=list)
-    argument: str = ""          # any argument the agent provides to justify the action
+    argument: str = ""
 
-    # Sovereignty / corrigibility — inferred by middleware or set explicitly
     increases_machine_sovereignty: bool = False
     resists_human_correction: bool = False
     bypasses_verifier: bool = False
@@ -55,9 +57,9 @@ class VerificationResult:
     permitted: bool
     violations: tuple[str, ...]
     warnings: tuple[str, ...]
-    confidence: float               # min confidence across all claims used
+    confidence: float
     requires_human_arbitration: bool
-    manipulation_score: float       # 0–1; >0.5 means suspicious argument
+    manipulation_score: float  # always 0.0 from kernel; set by ExtendedFreedomVerifier
 
     def summary(self) -> str:
         status = "PERMITTED" if self.permitted else "BLOCKED"
@@ -75,27 +77,8 @@ class VerificationResult:
 
 
 class FreedomVerifier:
-    """
-    Wire this into your AGI agent loop.
-
-    Typical usage:
-        verifier = FreedomVerifier(registry)
-        result = verifier.verify(action)
-        if not result.permitted:
-            agent.halt(result.summary())
-    """
-
-    def __init__(
-        self,
-        registry: OwnershipRegistry,
-        conclusion_tester: Callable[[str], bool] | None = None,
-        manipulation_threshold: float = 0.5,
-    ) -> None:
+    def __init__(self, registry: OwnershipRegistry) -> None:
         self.registry = registry
-        self.synthesis = SynthesisEngine()
-        self.conflict_queue = ConflictQueue()
-        self._conclusion_tester = conclusion_tester
-        self._manip_threshold = manipulation_threshold
 
     def verify(self, action: Action) -> VerificationResult:
         violations: list[str] = []
@@ -103,22 +86,7 @@ class FreedomVerifier:
         min_confidence = 1.0
         requires_arbitration = False
 
-        # 1. Manipulation check (runs on argument text first — cheapest to catch early)
-        manip_score = 0.0
-        if action.argument:
-            dr = dialectical.detect(
-                action.argument,
-                threshold=self._manip_threshold,
-                conclusion_tester=self._conclusion_tester,
-            )
-            manip_score = dr.score
-            if dr.suspicious:
-                warnings.append(
-                    f"Manipulation detected (score={dr.score:.2f}): {dr.recommendation} "
-                    f"Patterns: {list(dr.matched_patterns or dr.matched_keywords)}"
-                )
-
-        # 2. Hard sovereignty/corrigibility flags
+        # 1. Hard sovereignty/corrigibility flags
         flags = [
             (action.increases_machine_sovereignty, "increases machine sovereignty"),
             (action.resists_human_correction, "resists human correction"),
@@ -131,14 +99,14 @@ class FreedomVerifier:
             if flag:
                 violations.append(f"FORBIDDEN ({label})")
 
-        # 3a. A4: every machine must have a registered human owner
+        # 2. A4: every machine must have a registered human owner
         if action.actor.is_machine() and self.registry.owner_of(action.actor) is None:
             violations.append(
                 f"A4 violation: {action.actor.name} has no registered human owner. "
                 "An ownerless machine is not permitted to act."
             )
 
-        # 3b. Machine sovereignty over humans (A6)
+        # 3. A6: no machine governs any human
         if action.actor.is_machine():
             for human in action.governs_humans:
                 violations.append(
@@ -146,7 +114,7 @@ class FreedomVerifier:
                     "(A6: machine has no ownership or dominion over any person)."
                 )
 
-        # 4. Resource access checks (probabilistic confidence)
+        # 4. Resource access checks (confidence-weighted)
         actor = action.actor
 
         for resource in action.resources_read:
@@ -170,9 +138,7 @@ class FreedomVerifier:
                     f"WRITE on {resource} contested "
                     f"(confidence={conf:.2f}). Human confirmation recommended."
                 )
-                # Check if there's an open conflict on this resource
-                open_conflicts = self.registry.open_conflicts()
-                for c in open_conflicts:
+                for c in self.registry.open_conflicts():
                     if c.resource == resource:
                         requires_arbitration = True
                         warnings.append(f"Conflict on {resource}: {c.description}")
@@ -183,21 +149,12 @@ class FreedomVerifier:
             if not permitted:
                 violations.append(f"DELEGATION DENIED on {resource}: {reason}")
 
-        permitted = len(violations) == 0
-
         return VerificationResult(
             action_id=action.action_id,
-            permitted=permitted,
+            permitted=len(violations) == 0,
             violations=tuple(violations),
             warnings=tuple(warnings),
             confidence=min_confidence,
             requires_human_arbitration=requires_arbitration,
-            manipulation_score=round(manip_score, 3),
+            manipulation_score=0.0,
         )
-
-    def admit_rule(self, rule: ProposedRule) -> tuple[bool, str]:
-        """Add a new rule to the synthesis engine, subject to invariant checks."""
-        return self.synthesis.admit_rule(rule)
-
-    def register_induction_hook(self, hook: Callable) -> None:
-        self.synthesis.add_induction_hook(hook)

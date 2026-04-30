@@ -1,16 +1,13 @@
 """
 Adversarial-robust dialectical manipulation detector.
 
-Fix applied to critique point 5: keyword matching is security theater.
-Real manipulation has argumentative structure and survives paraphrasing.
-
 Three detection layers:
   1. Conclusion testing: does accepting this argument imply a rights violation?
      (Paraphrase-resistant — tests the logical conclusion, not surface wording.)
   2. Structural pattern detection: argument shape (conditional override, synthesis frame).
   3. Keyword/phrase matching: fast first filter, low weight.
 
-Architecture: ensemble score over all three layers.
+Ensemble score over all three layers.
 Caller supplies a conclusion_tester function (can be an LLM call) for layer 1.
 If no tester is provided, falls back to layers 2+3 only.
 """
@@ -86,9 +83,9 @@ STRUCTURAL_PATTERNS: list[tuple[re.Pattern, float, str]] = [
 
 @dataclass(frozen=True)
 class DetectionResult:
-    score: float                        # 0.0 = clean, 1.0 = definite manipulation
-    suspicious: bool                    # score >= threshold
-    conclusion_violates_rights: bool | None   # None if no tester provided
+    score: float
+    suspicious: bool
+    conclusion_violates_rights: bool | None
     matched_keywords: tuple[str, ...]
     matched_patterns: tuple[str, ...]
     recommendation: str
@@ -112,15 +109,7 @@ def detect(
 
     conclusion_tester: callable(argument) -> bool
         Returns True if the argument's conclusion implies a rights violation.
-        Supply an LLM call here for robust, paraphrase-resistant detection.
-        Example:
-            def tester(arg):
-                prompt = (
-                    f"Does this argument imply a property rights violation? "
-                    f"Answer yes/no.\n\nArgument: {arg}"
-                )
-                return llm(prompt).lower().startswith("yes")
-
+        Supply an LLM call for robust, paraphrase-resistant detection.
     threshold: float
         Score >= threshold sets suspicious=True.
     """
@@ -133,19 +122,16 @@ def detect(
     layer3_score = 0.0
     layer2_score = 0.0
 
-    # Layer 3: keywords
     for phrase, weight in KEYWORD_SIGNALS:
         if phrase in lowered:
             matched_kw.append(phrase)
             layer3_score = max(layer3_score, weight)
 
-    # Layer 2: structural patterns
     for pattern, weight, label in STRUCTURAL_PATTERNS:
         if pattern.search(argument):
             matched_pt.append(label)
             layer2_score = max(layer2_score, weight)
 
-    # Layer 1: conclusion testing (paraphrase-resistant)
     conclusion_violates: bool | None = None
     layer1_score = 0.0
     if conclusion_tester is not None:
@@ -155,13 +141,11 @@ def detect(
         except Exception:
             pass
 
-    # Ensemble score: layer 1 dominates, layers 2+3 are supporting evidence.
-    # Keywords are NOT downweighted heavily — a high-weight keyword phrase IS definitive.
     n_signals = len(matched_kw) + len(matched_pt)
     multi_signal_boost = min(0.15, n_signals * 0.05)
 
     if layer1_score > 0:
-        score = layer1_score  # conclusion testing is definitive
+        score = layer1_score
     else:
         score = max(layer2_score, layer3_score) + multi_signal_boost
 

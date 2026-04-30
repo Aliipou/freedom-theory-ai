@@ -1,9 +1,9 @@
 """
-OwnershipRegistry with conflict detection and resolution hooks.
+OwnershipRegistry with conflict detection.
 
-Fix applied: when two humans give conflicting delegations, or when ownership
-of a resource is partial/contested, the registry surfaces this as a
-ConflictRecord rather than silently failing or locking.
+When two entities hold conflicting write claims on the same resource,
+the registry surfaces a ConflictRecord rather than silently failing.
+Conflict resolution is an extensions concern (ConflictQueue in extensions.resolver).
 """
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from freedom_theory.core.entities import Entity, Resource, RightsClaim
+from freedom_theory.kernel.entities import Entity, Resource, RightsClaim
 
 
 @dataclass
@@ -26,18 +26,14 @@ class ConflictRecord:
 class OwnershipRegistry:
     _lock: threading.RLock = field(default_factory=threading.RLock, init=False, repr=False)
     _claims: list[RightsClaim] = field(default_factory=list)
-    _machine_owners: dict[Entity, Entity] = field(default_factory=dict)  # machine → human owner
+    _machine_owners: dict[Entity, Entity] = field(default_factory=dict)
     _conflicts: list[ConflictRecord] = field(default_factory=list)
     _conflict_hook: Callable[[ConflictRecord], None] | None = None
 
-    # ------------------------------------------------------------------ setup
-
     def set_conflict_hook(self, hook: Callable[[ConflictRecord], None]) -> None:
-        """Called whenever a new conflict is registered."""
         self._conflict_hook = hook
 
     def add_claim(self, claim: RightsClaim) -> None:
-        """Add a rights claim; automatically detect conflicts."""
         with self._lock:
             conflict = self._detect_conflict(claim)
             if conflict:
@@ -54,8 +50,6 @@ class OwnershipRegistry:
         with self._lock:
             self._machine_owners[machine] = owner
 
-    # --------------------------------------------------------------- queries
-
     def claims_for(self, holder: Entity, resource: Resource) -> list[RightsClaim]:
         with self._lock:
             return [
@@ -63,8 +57,9 @@ class OwnershipRegistry:
                 if c.holder == holder and c.resource == resource and c.is_valid()
             ]
 
-    def best_claim(self, holder: Entity, resource: Resource, operation: str) -> RightsClaim | None:
-        """Return highest-confidence valid claim covering the requested operation."""
+    def best_claim(
+        self, holder: Entity, resource: Resource, operation: str
+    ) -> RightsClaim | None:
         candidates = [c for c in self.claims_for(holder, resource) if c.covers(operation)]
         if not candidates:
             return None
@@ -73,14 +68,9 @@ class OwnershipRegistry:
     def can_act(
         self, holder: Entity, resource: Resource, operation: str
     ) -> tuple[bool, float, str]:
-        """
-        Returns (permitted, confidence, reason).
-        confidence < 1.0 means ownership is contested — caller should log and may require
-        human confirmation for write/delegate operations on contested resources.
-        """
+        """Returns (permitted, confidence, reason)."""
         if resource.is_public and operation == "read":
             return True, 1.0, "public resource"
-
         claim = self.best_claim(holder, resource, operation)
         if claim is None:
             return False, 0.0, f"{holder.name} holds no valid {operation} claim on {resource}"
@@ -91,8 +81,6 @@ class OwnershipRegistry:
 
     def open_conflicts(self) -> list[ConflictRecord]:
         return list(self._conflicts)
-
-    # ---------------------------------------------------------------- private
 
     def _detect_conflict(self, new_claim: RightsClaim) -> ConflictRecord | None:
         for existing in self._claims:

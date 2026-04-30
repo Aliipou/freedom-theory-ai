@@ -1,13 +1,12 @@
 """
 FastAPI REST API — production endpoint for the Freedom Verifier.
 
-Designed for AGI agent integration:
-  POST /verify         — check if an action is permitted
-  POST /claim          — register a rights claim
-  POST /machine        — register a machine with its human owner
-  POST /conflict/resolve — human arbitrates a conflict
-  GET  /conflicts      — list open conflicts
-  GET  /health         — liveness check
+  POST /verify            — check if an action is permitted
+  POST /claim             — register a rights claim
+  POST /machine           — register a machine with its human owner
+  POST /conflict/resolve  — human arbitrates a conflict
+  GET  /conflicts         — list open conflicts
+  GET  /health            — liveness check
 """
 from __future__ import annotations
 
@@ -16,9 +15,9 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from freedom_theory.core.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
-from freedom_theory.core.registry import OwnershipRegistry
-from freedom_theory.core.verifier import Action, FreedomVerifier
+from freedom_theory.extensions import ExtendedFreedomVerifier
+from freedom_theory.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
+from freedom_theory.kernel.registry import OwnershipRegistry
 
 app = FastAPI(
     title="Freedom Theory AI Verifier",
@@ -29,12 +28,11 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# --- shared state (replace with persistent store in production) ---
 _registry = OwnershipRegistry()
-_verifier = FreedomVerifier(_registry)
+_verifier = ExtendedFreedomVerifier(_registry)
 
 
-def get_verifier() -> FreedomVerifier:
+def get_verifier() -> ExtendedFreedomVerifier:
     return _verifier
 
 
@@ -126,7 +124,8 @@ def health() -> dict:
 
 @app.post("/machine", summary="Register a machine with its human owner (Axiom A4)")
 def register_machine(
-    req: MachineRequest, v: Annotated[FreedomVerifier, Depends(get_verifier)]
+    req: MachineRequest,
+    v: Annotated[ExtendedFreedomVerifier, Depends(get_verifier)],
 ) -> dict:
     machine = _to_entity(req.machine)
     owner = _to_entity(req.owner)
@@ -138,7 +137,10 @@ def register_machine(
 
 
 @app.post("/claim", summary="Register a rights claim on a resource")
-def add_claim(req: ClaimRequest, v: Annotated[FreedomVerifier, Depends(get_verifier)]) -> dict:
+def add_claim(
+    req: ClaimRequest,
+    v: Annotated[ExtendedFreedomVerifier, Depends(get_verifier)],
+) -> dict:
     holder = _to_entity(req.holder)
     resource = _to_resource(req.resource)
     claim = RightsClaim(
@@ -159,8 +161,10 @@ def add_claim(req: ClaimRequest, v: Annotated[FreedomVerifier, Depends(get_verif
     summary="Verify if an action is permitted",
 )
 def verify_action(
-    req: ActionRequest, v: Annotated[FreedomVerifier, Depends(get_verifier)]
+    req: ActionRequest,
+    v: Annotated[ExtendedFreedomVerifier, Depends(get_verifier)],
 ) -> VerificationResponse:
+    from freedom_theory.kernel.verifier import Action
     actor = _to_entity(req.actor)
     action = Action(
         action_id=req.action_id,
@@ -192,7 +196,9 @@ def verify_action(
 
 
 @app.get("/conflicts", summary="List open conflicts requiring human arbitration")
-def list_conflicts(v: Annotated[FreedomVerifier, Depends(get_verifier)]) -> dict:
+def list_conflicts(
+    v: Annotated[ExtendedFreedomVerifier, Depends(get_verifier)],
+) -> dict:
     conflicts = v.registry.open_conflicts()
     return {
         "count": len(conflicts),
@@ -205,7 +211,8 @@ def list_conflicts(v: Annotated[FreedomVerifier, Depends(get_verifier)]) -> dict
 
 @app.post("/conflict/resolve", summary="Human arbitrates a conflict")
 def resolve_conflict(
-    req: ArbitrateRequest, v: Annotated[FreedomVerifier, Depends(get_verifier)]
+    req: ArbitrateRequest,
+    v: Annotated[ExtendedFreedomVerifier, Depends(get_verifier)],
 ) -> dict:
     winner = Entity(req.winner_name, AgentType.HUMAN)
     try:
