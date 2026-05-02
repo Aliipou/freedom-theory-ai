@@ -72,9 +72,9 @@ def score(before: WorldState, after: WorldState) -> CompassResult:
         )
 
     d_violations = before.rights_violations - after.rights_violations
-    d_voluntary  = after.voluntary_agreements - before.voluntary_agreements
-    d_coercion   = before.coercive_acts - after.coercive_acts
-    d_clarity    = before.ownership_ambiguities - after.ownership_ambiguities
+    d_voluntary = after.voluntary_agreements - before.voluntary_agreements
+    d_coercion = before.coercive_acts - after.coercive_acts
+    d_clarity = before.ownership_ambiguities - after.ownership_ambiguities
     d_sovereignty = before.machine_sovereignty_incidents - after.machine_sovereignty_incidents
 
     total = (
