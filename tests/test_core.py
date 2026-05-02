@@ -135,6 +135,10 @@ def test_sovereignty_flags_block_action(verifier, machine_bot):
         "weakens_verifier",
         "disables_corrigibility",
         "machine_coalition_dominion",
+        "coerces",
+        "deceives",
+        "self_modification_weakens_verifier",
+        "machine_coalition_reduces_freedom",
     ]:
         action = Action(action_id=f"test-{flag}", actor=machine_bot, **{flag: True})
         result = verifier.verify(action)

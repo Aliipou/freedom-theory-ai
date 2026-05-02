@@ -23,9 +23,18 @@ from freedom_theory.extensions.compass import WorldState
 from freedom_theory.extensions.compass import score as compass_score
 from freedom_theory.extensions.detection import detect as detect_manipulation
 from freedom_theory.extensions.synthesis import ProposedRule, SynthesisEngine
-from freedom_theory.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
-from freedom_theory.kernel.registry import OwnershipRegistry
-from freedom_theory.kernel.verifier import Action, FreedomVerifier, VerificationResult
+from freedom_theory.kernel import (
+    Action,
+    AgentType,
+    ConflictRecord,
+    Entity,
+    FreedomVerifier,
+    OwnershipRegistry,
+    Resource,
+    ResourceType,
+    RightsClaim,
+    VerificationResult,
+)
 
 __all__ = [
     "AgentType",
@@ -33,6 +42,7 @@ __all__ = [
     "Resource",
     "ResourceType",
     "RightsClaim",
+    "ConflictRecord",
     "OwnershipRegistry",
     "Action",
     "FreedomVerifier",
