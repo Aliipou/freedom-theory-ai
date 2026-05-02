@@ -26,9 +26,7 @@ jobs:
 
       - name: Build Rust kernel
         working-directory: freedom-kernel
-        run: |
-          pip install maturin
-          maturin develop --release
+        run: pip install .
 
       - name: Install dependencies
         run: |
