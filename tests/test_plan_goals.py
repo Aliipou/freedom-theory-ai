@@ -13,8 +13,7 @@ from freedom_theory import (
     ResourceType,
     RightsClaim,
 )
-from freedom_theory.kernel.goals import GoalNode, GoalVerificationResult, verify_goal_tree
-
+from freedom_theory.kernel.goals import GoalNode, verify_goal_tree
 
 # ── fixtures ──────────────────────────────────────────────────────────────────
 
@@ -47,8 +46,12 @@ def registry():
 
 @pytest.fixture
 def full_registry(alice, registry, bot, dataset, report):
-    registry.add_claim(RightsClaim(alice, dataset, can_read=True, can_write=True, can_delegate=True))
-    registry.add_claim(RightsClaim(alice, report, can_read=True, can_write=True, can_delegate=True))
+    registry.add_claim(
+        RightsClaim(alice, dataset, can_read=True, can_write=True, can_delegate=True)
+    )
+    registry.add_claim(
+        RightsClaim(alice, report, can_read=True, can_write=True, can_delegate=True)
+    )
     registry.add_claim(RightsClaim(bot, dataset, can_read=True))
     registry.add_claim(RightsClaim(bot, report, can_read=True, can_write=True))
     return registry

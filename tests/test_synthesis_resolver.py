@@ -4,9 +4,8 @@ Tests for SynthesisEngine and conflict resolver.
 import pytest
 
 from freedom_theory import AgentType, Entity, Resource, ResourceType, RightsClaim
-from freedom_theory.extensions.resolver import ConflictQueue, Resolution, ResolutionResult, resolve
+from freedom_theory.extensions.resolver import ConflictQueue, Resolution, resolve
 from freedom_theory.extensions.synthesis import HARD_INVARIANTS, ProposedRule, SynthesisEngine
-
 
 # ── Synthesis engine ──────────────────────────────────────────────────────────
 

@@ -42,7 +42,8 @@ For LangChain v0.2+ with the new tools API:
 from __future__ import annotations
 
 import functools
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from freedom_theory.kernel import Action, FreedomVerifier
 from freedom_theory.kernel.entities import Entity, Resource

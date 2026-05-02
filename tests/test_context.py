@@ -19,7 +19,6 @@ from freedom_theory import (
     RightsClaim,
 )
 
-
 # ── fixtures ──────────────────────────────────────────────────────────────────
 
 @pytest.fixture
@@ -53,7 +52,9 @@ def registry():
 
 @pytest.fixture
 def full_registry(alice, registry, bot, dataset):
-    registry.add_claim(RightsClaim(alice, dataset, can_read=True, can_write=True, can_delegate=True))
+    registry.add_claim(
+        RightsClaim(alice, dataset, can_read=True, can_write=True, can_delegate=True)
+    )
     registry.add_claim(RightsClaim(bot, dataset, can_read=True))
     return registry
 
