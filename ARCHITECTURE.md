@@ -190,6 +190,52 @@ wasm/                       → verifier compiled to WASM (runs anywhere)
 
 ---
 
+## Philosophical foundation vs. runtime coupling
+
+**وفاداری فلسفی ≠ coupling معماری** — philosophical loyalty ≠ architectural coupling.
+
+The axioms come from *نظریه آزادی* (Theory of Freedom) by Mohammad Ali Jannat Khah
+Doust. That origin is real and should not be erased. But the runtime enforces
+machine-checkable propositions over a typed ownership graph — not a theology.
+
+The distinction must be explicit everywhere:
+
+| Layer | Axiom | Status |
+|---|---|---|
+| Metaphysical | A1: every person's ultimate ownership is not by any human, state, or machine | Declared — ontological foundation, not runtime-enforced |
+| Governance | A2–A3: no human owns another; every person has typed property rights | Declared — grounds the ownership model |
+| **Operational** | **A4–A7: machine ownership, scope, dominion, delegation** | **Runtime-enforced — machine-checkable** |
+
+A1 is not theology inside a syscall filter. It is the *why* behind A4–A7.
+A4–A7 work as a formal system independently of anyone accepting A1.
+
+**What this means in practice:**
+
+- The runtime never checks metaphysical claims
+- The runtime never scores "spirit" or "divine alignment"
+- The runtime checks: does this agent have a human owner? Does it have a delegated claim? Does this action set a sovereignty flag?
+- Those checks are purely structural — they require no worldview commitment from the caller
+
+**What must NOT enter the runtime:**
+- Satan detection
+- Mysticism scoring
+- Metaphysical alignment metrics
+- Mahdavi compass as a hard gate (it is an optional extension, not a kernel primitive)
+- Any check that requires theological interpretation
+
+**What must stay in the foundation:**
+- The ontological framing in documentation (A1 explains *why* A6 exists)
+- Attribution to the source theory
+- The moral weight that motivates the engineering constraints
+
+Strip the ontology and the project becomes a generic capability kernel with no
+identity. Couple the ontology into the runtime and it becomes a worldview-locked
+monolith that no one outside the theory's community will deploy.
+
+The right boundary: philosophy explains the axioms; the runtime enforces them.
+
+---
+
 ## What the kernel is NOT
 
 - Not a moral philosophy engine
