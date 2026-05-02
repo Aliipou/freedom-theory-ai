@@ -222,13 +222,23 @@ impl Resource {
 // ─── Entity ───────────────────────────────────────────────────────────────────
 
 #[pyclass(frozen)]
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Entity {
     #[pyo3(get)]
     pub name: String,
     #[pyo3(get)]
     pub kind: AgentType,
     metadata: PyObject,
+}
+
+impl Clone for Entity {
+    fn clone(&self) -> Self {
+        Python::with_gil(|py| Entity {
+            name: self.name.clone(),
+            kind: self.kind.clone(),
+            metadata: self.metadata.clone_ref(py),
+        })
+    }
 }
 
 // Equality/hash exclude metadata (matches Python frozen dataclass behaviour)

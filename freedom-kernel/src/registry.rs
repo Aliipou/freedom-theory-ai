@@ -260,7 +260,7 @@ impl OwnershipRegistry {
                 inner.conflicts.push(c.clone());
             }
             inner.claims.push(entry);
-            (conflict, inner.conflict_hook.clone())
+            (conflict, inner.conflict_hook.as_ref().map(|h| h.clone_ref(py)))
         };
 
         if let (Some(conflict_entry), Some(hook)) = (conflict, hook) {
