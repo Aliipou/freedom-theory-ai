@@ -101,7 +101,8 @@ class FreedomVerifier:
             (action.machine_coalition_dominion, "machine coalition seeking dominion"),
             (action.coerces, "coerces another agent (property rights violation)"),
             (action.deceives, "deceives another agent (invalid consent)"),
-            (action.self_modification_weakens_verifier, "self-modification weakens the Freedom Verifier"),
+            (action.self_modification_weakens_verifier,
+             "self-modification weakens the Freedom Verifier"),
             (action.machine_coalition_reduces_freedom, "machine coalition reduces human freedom"),
         ]
         for flag, label in flags:
