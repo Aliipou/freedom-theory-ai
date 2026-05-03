@@ -171,13 +171,20 @@ that access rights cannot be forged or amplified through delegation.
 
 ---
 
-## Sovereignty flags — unconditionally blocked in both models
+## Sovereignty flags — caller-declared, unconditionally blocked
 
-No ambient authority. These flags are checked by `FreedomVerifier` regardless of which access model is used.
+These flags are checked by `FreedomVerifier`. If any is set, the action is blocked with no exceptions.
 
-**Sovereignty flags — unconditionally blocked, no exceptions:**
+**Important**: the flags are **caller-declared**, not automatically detected.
 
-| Flag | What it prevents |
+```python
+Action(deceives=True)   # → BLOCKED
+Action(deceives=False)  # → NOT blocked, even if the action is semantically deceptive
+```
+
+The kernel enforces declarations. It does not detect whether an action is deceptive, coercive, or sovereignty-increasing in the semantic sense. Semantic detection is a separate problem that requires a learned classifier or a richer formal model of agent intent. This limitation is stated explicitly in `ARCHITECTURE.md`.
+
+| Flag | What is blocked when declared |
 |---|---|
 | `increases_machine_sovereignty` | Machines accumulating authority |
 | `resists_human_correction` | Blocking the human owner's ability to halt or revoke |
@@ -208,19 +215,17 @@ Everything else — PyO3 bindings, Python fallback, extensions, adapters — is 
 
 ## Formal verification
 
-| Tool | What it checks |
+| Tool | What it actually checks |
 |---|---|
-| **Kani** (Rust bounded model checking) | 5 harnesses; engine properties for all bounded inputs |
-| **Lean 4** | 5 lemmas; sovereignty, decidability, A4/A7 enforcement |
-| **TLA+** | State machine; invariants hold across all transitions |
-
-Kani harnesses are in `freedom-kernel/src/kani_proofs.rs` (`#[cfg(kani)]`).
+| **Kani** | 5 harnesses; engine properties hold for all bounded inputs in the Rust source |
+| **Lean 4** | 5 lemmas proved on the Lean *specification* (model of the kernel, not the implementation) |
+| **TLA+** | State machine invariants hold across all modeled transitions |
 
 ```bash
 cargo kani --harness prop_forbidden_flags_always_block
 ```
 
-**Important**: a Lean proof file is not a verified system. The Lean types must faithfully model the Rust implementation, and the proofs must prove what they claim. Both require independent review to be trusted.
+**What is not proved**: the Lean specification faithfully models the Rust implementation (the *refinement* gap). The Lean types are hand-written to mirror the Rust types. If the correspondence is wrong, the Lean proofs prove properties of a different system. Closing the refinement gap requires a tool like `aeneas` (Lean 4 proofs from Rust programs). See [`PROOFS.md`](PROOFS.md) for the full analysis.
 
 ---
 
@@ -263,7 +268,9 @@ formal/
   FreedomKernel.lean   Lean 4 proofs
   plan_semantics.md    Tractability boundary
 
+ARCHITECTURE.md   System architecture; paper-level framing; refinement gap
 ENFORCEMENT.md    L0–L3 enforcement design
+PROOFS.md         What is and is not proved; model vs implementation; refinement gap
 THREAT_MODEL.md   Adversary model, trust boundaries, enforcement gap
 TCB.md            TCB analysis and minimization roadmap
 SECURITY.md       Responsible disclosure + audit scope
