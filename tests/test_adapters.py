@@ -5,9 +5,15 @@ from freedom_theory.adapters.anthropic import AnthropicKernelAdapter
 from freedom_theory.adapters.autogen import AutoGenKernelAdapter
 from freedom_theory.adapters.langchain import FreedomTool, kernel_gate
 from freedom_theory.adapters.openai_agents import OpenAIKernelMiddleware
-from freedom_theory.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
-from freedom_theory.kernel.registry import OwnershipRegistry
-from freedom_theory.kernel.verifier import FreedomVerifier
+from freedom_theory.kernel import (
+    AgentType,
+    Entity,
+    FreedomVerifier,
+    OwnershipRegistry,
+    Resource,
+    ResourceType,
+    RightsClaim,
+)
 
 # ── shared fixtures ───────────────────────────────────────────────────────────
 

@@ -38,8 +38,7 @@ import functools
 from collections.abc import Callable
 from typing import Any
 
-from freedom_theory.kernel import Action, FreedomVerifier
-from freedom_theory.kernel.entities import Entity, Resource
+from freedom_theory.kernel import Action, Entity, FreedomVerifier, Resource
 
 
 class OpenAIKernelMiddleware:
