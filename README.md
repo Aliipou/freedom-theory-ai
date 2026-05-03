@@ -112,19 +112,68 @@ with open("agent_seccomp.json", "w") as f:
 
 ---
 
-## Core properties
+## Two access models
 
-No ambient authority. Every operation the agent performs must be covered by a claim that its human owner delegated explicitly.
+### Model A — policy mediation (current primary model)
 
 ```
-owner  →  delegates claim to machine  →  machine requests action
-                                          ↓
-                                    FreedomVerifier
-                                    checks: is this claim valid?
-                                    checks: do any sovereignty flags fire?
-                                          ↓
-                                    PERMITTED / BLOCKED
+owner registers claim in registry
+agent presents: (actor name, resource name, operation)
+verifier: registry lookup → check invariants → PERMITTED / BLOCKED
 ```
+
+Name-based. The agent presents a name; the registry is consulted at runtime.
+This is what the `FreedomVerifier` implements today.
+
+### Model B — capability objects (implemented in `kernel/capability.py`)
+
+```python
+from freedom_theory import CapabilityStore
+
+store = CapabilityStore()
+
+# Owner issues an unforgeable token
+cap = store.issue(resource, can_read=True, can_write=True, can_delegate=True)
+
+# Delegate read-only — attenuation can only reduce rights, never amplify
+read_cap = cap.delegate(can_read=True, can_write=False)
+
+# Token IS the proof — no name lookup
+store.verify_capability(read_cap, "read")   # True
+store.verify_capability(read_cap, "write")  # False
+
+# Revoke cascades to all derived capabilities
+cap.revoke()
+store.verify_capability(read_cap, "read")   # False — revoked
+```
+
+Token-based. The capability object is the proof of right.
+Four invariants hold by construction:
+
+| Property | How it's enforced |
+|---|---|
+| **Unforgeable** | `_store_secret` is a per-store random token; externally constructed capabilities fail `verify_capability` |
+| **Delegatable** | `delegate()` creates sub-capabilities from existing ones |
+| **Attenuatable** | `attenuate()` ANDs each right — False AND True = False; amplification is impossible |
+| **Revocable** | `revoke()` cascades to all children via the parent's `_children` list |
+
+This is the model used by Capsicum (file descriptors), seL4 (CNodes), and CHERI (tagged pointers).
+The key difference from Model A: no registry name lookup — presenting the token is sufficient.
+
+### Current relationship between the two models
+
+Model A (verifier) enforces sovereignty flags and delegation chains.
+Model B (capability store) enforces token unforgeability, attenuation, and revocation.
+
+They are complementary. A complete capability kernel requires both: the verifier prevents
+sovereignty violations even when a valid capability is presented; the capability store ensures
+that access rights cannot be forged or amplified through delegation.
+
+---
+
+## Sovereignty flags — unconditionally blocked in both models
+
+No ambient authority. These flags are checked by `FreedomVerifier` regardless of which access model is used.
 
 **Sovereignty flags — unconditionally blocked, no exceptions:**
 

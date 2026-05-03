@@ -33,6 +33,7 @@ from freedom_theory.kernel import (
     VerificationResult,
 )
 from freedom_theory.kernel.audit import AuditLog
+from freedom_theory.kernel.capability import Capability, CapabilityStore, Rights
 from freedom_theory.kernel.context import ExecutionContext
 from freedom_theory.kernel.goals import GoalNode, GoalVerificationResult, verify_goal_tree
 from freedom_theory.kernel.policy import Policy, PolicyRule, PolicyVerifier
@@ -77,4 +78,8 @@ __all__ = [
     "SecurityLattice",
     # Audit
     "AuditLog",
+    # Capability object model
+    "Capability",
+    "CapabilityStore",
+    "Rights",
 ]
