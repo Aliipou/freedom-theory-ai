@@ -2,6 +2,8 @@ mod crypto;
 pub(crate) mod engine;
 pub mod entities;
 pub mod ffi;
+#[cfg(kani)]
+mod kani_proofs;
 pub mod registry;
 pub mod verifier;
 pub mod wire;
