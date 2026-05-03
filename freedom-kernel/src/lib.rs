@@ -6,6 +6,8 @@ pub mod ffi;
 mod kani_proofs;
 pub mod registry;
 pub mod verifier;
+#[cfg(feature = "wasm")]
+pub mod wasm;
 pub mod wire;
 
 use pyo3::prelude::*;

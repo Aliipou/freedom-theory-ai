@@ -8,10 +8,26 @@ description = "Formal, auditable, cryptographically-verifiable AGI permission ke
 name = "freedom_kernel"
 crate-type = ["cdylib"]
 
+# ── Features ──────────────────────────────────────────────────────────────────
+#
+# wasm      — wasm-bindgen bindings for browser/Node/WASI targets.
+#             Build: wasm-pack build --target web -- --features wasm
+#             Requires: wasm-pack, wasm32 target installed.
+#
+# embedded  — Enables #[no_std] + alloc for bare-metal/RTOS targets.
+#             Build: cargo build --target thumbv7em-none-eabihf --features embedded
+#             Note: expiry checks are disabled (no_std has no system clock;
+#             use expires_at = None or supply your own time source via the C ABI).
+
+[features]
+wasm     = ["dep:wasm-bindgen"]
+embedded = []
+
 [dependencies]
-pyo3       = { version = "0.22", features = ["extension-module"] }
-serde      = { version = "1",    features = ["derive"] }
-serde_json = "1"
+pyo3          = { version = "0.22", features = ["extension-module"] }
+serde         = { version = "1",    features = ["derive"] }
+serde_json    = "1"
 ed25519-dalek = { version = "2", features = ["rand_core"] }
-rand_core  = { version = "0.6",  features = ["getrandom"] }
-hex        = "0.4"
+rand_core     = { version = "0.6",  features = ["getrandom"] }
+hex           = "0.4"
+wasm-bindgen  = { version = "0.2", optional = true }

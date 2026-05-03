@@ -1,5 +1,15 @@
 //! Pure-Rust, no-PyO3 verification engine.
 //! All kernel logic lives here; PyO3 and C layers are thin facades.
+//!
+//! `embedded` feature: enables `#[no_std] + alloc`. Expiry checks are
+//! disabled (no system clock); use `expires_at = None` on all claims, or
+//! gate expiry externally via the C ABI before calling `verify`.
+#![cfg_attr(feature = "embedded", no_std)]
+#[cfg(feature = "embedded")]
+extern crate alloc;
+#[cfg(feature = "embedded")]
+use alloc::{format, string::String, vec, vec::Vec};
+
 use crate::wire::{
     ActionWire, ClaimWire, OwnershipRegistryWire, ResourceWire, VerificationResultWire,
 };
@@ -7,10 +17,18 @@ use crate::wire::{
 const CONFIDENCE_WARN_THRESHOLD: f64 = 0.8;
 
 fn now_secs() -> f64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs_f64()
+    #[cfg(not(feature = "embedded"))]
+    {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs_f64()
+    }
+    // On embedded targets there is no system clock.
+    // Returning 0.0 means expires_at is only meaningful when > 0.
+    // Use expires_at = None for time-unlimited claims on embedded.
+    #[cfg(feature = "embedded")]
+    { 0.0 }
 }
 
 fn claim_valid(c: &ClaimWire) -> bool {
