@@ -71,10 +71,11 @@ fn can_act(
             ),
         );
     }
+    // total_cmp is NaN-safe; unwrap_or is unreachable (candidates is non-empty)
     let best = candidates
         .iter()
-        .max_by(|a, b| a.confidence.partial_cmp(&b.confidence).unwrap())
-        .unwrap();
+        .max_by(|a, b| a.confidence.total_cmp(&b.confidence))
+        .unwrap_or(candidates[0]);
     (true, best.confidence, format!("claim confidence={:.2}", best.confidence))
 }
 

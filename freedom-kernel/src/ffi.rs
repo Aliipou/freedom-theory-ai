@@ -16,6 +16,10 @@ use crate::wire::{VerificationResultWire, VerifyInput};
 ///
 /// Returns 0 on success, -1 on parse/panic error.
 /// On error `out_json` contains `{"error":"..."}`.
+///
+/// Input is limited to 1 MiB to prevent memory exhaustion via crafted JSON.
+const MAX_INPUT_BYTES: usize = 1 << 20; // 1 MiB
+
 #[no_mangle]
 pub extern "C" fn freedom_kernel_verify(
     input_json: *const c_char,
@@ -31,6 +35,11 @@ pub extern "C" fn freedom_kernel_verify(
             }
         }
     };
+
+    if input.len() > MAX_INPUT_BYTES {
+        write_buf(out_json, out_len, r#"{"error":"input exceeds 1 MiB limit"}"#);
+        return -1;
+    }
 
     let outcome = std::panic::catch_unwind(|| -> Result<String, String> {
         let vi: VerifyInput =

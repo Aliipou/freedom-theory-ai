@@ -9,6 +9,24 @@
 
 ---
 
+## Two tracks
+
+| Branch | Purpose | Status |
+|---|---|---|
+| **`main`** | Python SDK — integrate the kernel into any agent framework | Production-usable |
+| **`kernel-grade`** | Hardening path toward a formally audited, production-grade enforcement primitive | In progress |
+
+The `main` branch is a complete, tested library with adapters for OpenAI, Anthropic, LangChain, and AutoGen.
+
+The `kernel-grade` branch is where the TCB is being minimized, panic paths are being eliminated, the threat model is being documented, and the architecture is being prepared for external audit by cryptographers, formal methods researchers, and security engineers.
+
+**Kernel-grade trust starts when independent parties hostile to the project try to break it.**
+Until that review has happened, this is engineering-grade software, not production-grade security infrastructure.
+
+See [`THREAT_MODEL.md`](THREAT_MODEL.md), [`TCB.md`](TCB.md), and [`SECURITY.md`](SECURITY.md) for the current security posture and known gaps.
+
+---
+
 ## What it is
 
 Freedom Kernel is a deterministic, formally specified permission gate that sits between any LLM and the real world.
